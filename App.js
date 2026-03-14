@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, createContext, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -11,29 +11,59 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+const AuthContext = createContext();
+
+const AuthProvider = ({ children }) => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userPhone, setUserPhone] = useState('');
+
+  const login = (phone) => {
+    setUserPhone(phone);
+    setIsLoggedIn(true);
+  };
+
+  const logout = () => {
+    setUserPhone('');
+    setIsLoggedIn(false);
+  };
+
+  return (
+    <AuthContext.Provider value={{ isLoggedIn, userPhone, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
 const Stack = createNativeStackNavigator();
 
 const HomeScreen = () => {
+  const { userPhone, logout } = useContext(AuthContext);
+
   return (
     <View style={styles.homeContainer}>
-      <Text style={styles.homeText}>Chào mừng bạn đến với Trang chủ!</Text>
+      <Text style={styles.homeText}>Xin chào {userPhone}</Text>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Text style={styles.logoutButtonText}>Đăng xuất</Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState('');
+  
+  const { login } = useContext(AuthContext);
 
   const validatePhone = (phone) => {
     const cleaned = phone.replace(/\s/g, ''); 
-    const regex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
+    const regex = /^(0[35789])[0-9]{8}$/;
     return regex.test(cleaned);
   };
 
   const handleTextChange = (text) => {
     const cleaned = text.replace(/\D/g, '');
-    
     const match = cleaned.slice(0, 10);
     
     let formatted = match;
@@ -72,7 +102,7 @@ const LoginScreen = ({ navigation }) => {
     }
 
     setError('');
-    navigation.navigate('Home');
+    login(phoneNumber);
   };
 
   return (
@@ -89,11 +119,11 @@ const LoginScreen = ({ navigation }) => {
 
         <TextInput
           style={[styles.input, error ? styles.inputError : null]}
-          placeholder="nhập sdt của bạn"
+          placeholder="09..."
           keyboardType="numeric"
           value={phoneNumber}
           onChangeText={handleTextChange}
-          maxLength={13} // 10 số + 3 khoảng trắng
+          maxLength={13} 
         />
         
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -110,18 +140,29 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
+const AppNavigator = () => {
+  const { isLoggedIn } = useContext(AuthContext);
 
-export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} />
+        {isLoggedIn ? (
+          <Stack.Screen name="Home" component={HomeScreen} />
+        ) : (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
 
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -137,7 +178,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#5d5555',
+    color: '#000',
   },
   content: {
     padding: 20,
@@ -160,7 +201,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
     paddingVertical: 10,
     marginBottom: 5,
-    color: '#655e5e',
+    color: '#000',
   },
   inputError: {
     borderBottomColor: 'red',
@@ -186,11 +227,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   homeText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#302AF2',
+    marginBottom: 30,
+  },
+  logoutButton: {
+    backgroundColor: '#ff4444',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 5,
+    elevation: 2, 
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   }
 });
